@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Image Gallery with Auto & Manual Folders + Night Mode</title>
+<style>
+    /* === Base styles (light mode) === */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+        color: #000;
+        transition: background 0.3s ease, color 0.3s ease;
+    }
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        transition: background 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+    }
+    .header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .header h1 {
+        color: #333;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .file-input-container {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 40px;
+        border: 3px dashed #667eea;
+        border-radius: 15px;
+        background: rgba(102, 126, 234, 0.05);
+        transition: all 0.3s ease;
+    }
+    .file-input-container:hover {
+        border-color: #764ba2;
+        background: rgba(118, 75, 162, 0.05);
+    }
+    .file-input {
+        display: none;
+    }
+    .file-label {
+        display: inline-block;
+        padding: 15px 30px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 50px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        font-weight: 600;
+        transition: transform 0.3s ease;
+    }
+    .file-label:hover {
+        transform: translateY(-2px);
+    }
+    .controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    .sort-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .sort-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 25px;
+        background: #667eea;
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .sort-btn:hover {
+        background: #764ba2;
+        transform: translateY(-1px);
+    }
+    .sort-btn.active {
+        background: #764ba2;
+    }
+    .image-count {
+        color: #666;
+        font-weight: 600;
+    }
+    .gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    .image-item {
+        position: relative;
+        border-radius: 15px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    .image-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+    }
+    .image-item img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+    .image-item:hover img {
+        transform: scale(1.05);
+    }
+    .image-info {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        padding: 20px 15px 15px;
+        color: white;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+    }
+    .image-item:hover .image-info {
+        transform: translateY(0);
+    }
+    .image-name {
+        font-weight: 600;
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+    }
+    .image-date {
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .modal.active {
+        display: flex;
+        opacity: 1;
+    }
+    .modal-content {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .modal-image {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+        border-radius: 10px;
+        animation: modalSlideIn 0.3s ease;
+    }
+    @keyframes modalSlideIn {
+        from {
+            transform: scale(0.8) translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+    }
+    .modal-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 2rem;
+        padding: 15px 20px;
+        cursor: pointer;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+    .modal-nav:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-50%) scale(1.1);
+    }
+    .modal-prev {
+        left: 30px;
+    }
+    .modal-next {
+        right: 30px;
+    }
+    .modal-close {
+        position: absolute;
+        top: 30px;
+        right: 30px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        padding: 10px 15px;
+        cursor: pointer;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+    .modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+    }
+    .modal-info {
+        position: absolute;
+        bottom: 30px;
+        left: 90%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 25px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+    .loading {
+        text-align: center;
+        padding: 50px;
+        color: #666;
+        font-size: 1.2rem;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 50px;
+        color: #666;
+    }
+    .empty-state h3 {
+        margin-bottom: 10px;
+        color: #333;
+    }
+    @media (max-width: 768px) {
+        .container {
+            padding: 20px;
+            margin: 10px;
+        }
+        .header h1 {
+            font-size: 2rem;
+        }
+        .gallery {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .image-item img {
+            height: 150px;
+        }
+        .controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .sort-controls {
+            justify-content: center;
+        }
+        .modal-nav {
+            font-size: 1.5rem;
+            padding: 10px 15px;
+        }
+        .modal-prev {
+            left: 15px;
+        }
+        .modal-next {
+            right: 15px;
+        }
+        .modal-close {
+            top: 15px;
+            right: 15px;
+        }
+    }
+    /* Folder styles */
+    #autoFoldersSection, #foldersSection {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 30px;
+    }
+    .folder-item {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        background: #eee;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        overflow: hidden;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        color: #333;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: box-shadow 0.3s ease;
+    }
+    .folder-item:hover {
+        box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+    }
+    .folder-image {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        border-bottom: 1px solid #ccc;
+        transition: object-fit 0.3s ease;
+    }
+    .folder-image:hover {
+        object-fit: contain;
+    }
+
+    .folder-name {
+        padding: 10px 5px;
+        flex-grow: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .folder-item:hover .folder-name {
+        display: none;
+    }
+    .folder-import-btn {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: #667eea;
+        border: none;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.3s ease;
+    }
+    .folder-import-btn:hover {
+        background: #764ba2;
+    }
+    /* Edit button style */
+    .folder-edit-btn {
+        position: absolute;
+        bottom: 10px;
+        right: 75px;
+        background: #43a047;
+        border: none;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.3s ease;
+    }
+    .folder-edit-btn:hover {
+        background: #2e7d32;
+    }
+    /* Favorite button inside modal */
+    .modal-fav-btn {
+        position: absolute;
+        top: 30px;
+        left: 30px;
+        background: rgba(255, 255, 255, 0.6);
+        border: none;
+        color: #f39c12;
+        font-size: 2rem;
+        cursor: pointer;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.3s ease;
+        user-select: none;
+    }
+    .modal-fav-btn.favorited {
+        color: #e67e22;
+    }
+
+    /* === Night mode styles === */
+    body.night-mode {
+      background: #121212;
+      color: #ddd;
+    }
+    body.night-mode .container {
+      background: #1e1e1e;
+      box-shadow: 0 20px 40px rgba(255, 255, 255, 0.05);
+    }
+    body.night-mode .header h1 {
+      background: linear-gradient(45deg, #89f7fe, #66a6ff);
+      -webkit-text-fill-color: transparent;
+    }
+    body.night-mode .file-input-container {
+      border-color: #66a6ff;
+      background: rgba(102, 166, 255, 0.05);
+    }
+    body.night-mode .file-input-container:hover {
+      border-color: #89f7fe;
+      background: rgba(137, 247, 254, 0.1);
+    }
+    body.night-mode .sort-btn {
+      background: #66a6ff;
+      color: #111;
+    }
+    body.night-mode .sort-btn.active {
+      background: #89f7fe;
+      color: #111;
+    }
+    body.night-mode .folder-item {
+      background: #222;
+      color: #ddd;
+      box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+    }
+    body.night-mode .folder-import-btn,
+    body.night-mode .folder-edit-btn {
+      background: #66a6ff;
+      color: #111;
+    }
+    body.night-mode .folder-import-btn:hover,
+    body.night-mode .folder-edit-btn:hover {
+      background: #89f7fe;
+    }
+    body.night-mode .gallery {
+      background: #121212;
+    }
+    body.night-mode .image-item {
+      box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+    }
+    body.night-mode .image-item:hover {
+      box-shadow: 0 15px 30px rgba(255, 255, 255, 0.15);
+    }
+    body.night-mode .modal {
+      background: rgba(0, 0, 0, 0.95);
+    }
+    body.night-mode .modal-info {
+      background: rgba(50, 50, 50, 0.85);
+      color: #eee;
+    }
+
+    /* Night mode toggle button */
+    #toggleNightMode {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      font-size: 16px;
+      border-radius: 25px;
+      cursor: pointer;
+      z-index: 1100;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      transition: background 0.3s ease;
+    }
+    #toggleNightMode:hover {
+      background: #764ba2;
+    }
+</style>
+</head>
+<body>
+<button id="toggleNightMode" aria-label="Toggle Night Mode">🌙 Night Mode</button>
+<div class="container">
+    <div class="header">
+        <h1>📸 Image Gallery</h1>
+        <p>Upload your images and browse them with style</p>
+    </div>
+
+    <div class="file-input-container">
+        <input type="file" id="imageInput" class="file-input" multiple accept="image/*" />
+        <label for="imageInput" class="file-label">
+            📁 Select Images from Your IMG Folder
+        </label>
+        <p style="margin-top: 15px; color: #666;">
+            Select all images at once by pressing Ctrl+A (or Cmd+A on Mac) in your IMG folder
+        </p>
+    </div>
+
+    <div style="margin-bottom: 30px;">
+        <button id="addFolderBtn" class="sort-btn" style="background:#43a047;">+ Add Folder</button>
+    </div>
+
+    <!-- Auto folders section -->
+    <div id="autoFoldersSection" style="margin-bottom: 40px;"></div>
+
+    <!-- Manual folders section -->
+    <div id="foldersSection"></div>
+
+    <div class="controls" id="controls">
+        <div class="sort-controls">
+            <span style="color: #666; margin-right: 10px;">Sort by:</span>
+            <button class="sort-btn active" onclick="sortImages('all', event)">✨ ALL</button>
+            <button class="sort-btn" onclick="sortImages('newest', event)">📅 Newest First</button>
+            <button class="sort-btn" onclick="sortImages('oldest', event)">📅 Oldest First</button>
+            <button class="sort-btn" onclick="sortImages('name', event)">🔤 Name A-Z</button>
+            <button class="sort-btn" onclick="sortImages('favorite', event)">⭐ Favorites</button>
+        </div>
+        <div class="image-count" id="imageCount">0 images</div>
+    </div>
+
+    <div class="gallery" id="gallery">
+        <div class="empty-state">
+            <h3>No images selected</h3>
+            <p>Please select images from your IMG folder to start browsing</p>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="modal">
+    <div class="modal-content">
+        <img id="modalImage" class="modal-image" src="" alt="" />
+        <button class="modal-nav modal-prev" onclick="navigateImage(-1)">‹</button>
+        <button class="modal-nav modal-next" onclick="navigateImage(1)">›</button>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+        <div class="modal-info" id="modalInfo">
+            <div id="modalImageName"></div>
+            <div id="modalImageDate"></div>
+            <div id="modalImageIndex"></div>
+        </div>
+        <!-- Favorite button will be appended dynamically -->
+    </div>
+</div>
+
+<script>
+    const imageInput = document.getElementById('imageInput');
+    const gallery = document.getElementById('gallery');
+    const modal = document.getElementById('modal');
+    const modalImage = document.getElementById('modalImage');
+    const controls = document.getElementById('controls');
+    const imageCount = document.getElementById('imageCount');
+    const foldersSection = document.getElementById('foldersSection');
+    const autoFoldersSection = document.getElementById('autoFoldersSection');
+    const addFolderBtn = document.getElementById('addFolderBtn');
+    const toggleNightMode = document.getElementById('toggleNightMode');
+
+    // Data structure holding all images and folders
+    let data = {
+        img_paths: [],
+        folders: []
+    };
+
+    // Currently filtered images to display
+    let filteredImages = [];
+
+    // Sorting method (newest, oldest, name, favorite)
+    let currentSort = 'newest';
+
+    // Current folder filter index or null for all images
+    // For manual folders
+    let currentFolderId = null;
+
+    // Index of current image in filteredImages shown in modal
+    let currentImageIndex = 0;
+
+    // Hidden input for folder import images
+    const folderImportInput = document.createElement('input');
+    folderImportInput.type = 'file';
+    folderImportInput.multiple = true;
+    folderImportInput.accept = 'image/*';
+    folderImportInput.style.display = 'none';
+    document.body.appendChild(folderImportInput);
+
+    let currentImportFolderIndex = null; // folder index for import
+
+    // On load, try to get saved data from localStorage
+    window.onload = () => {
+        const saved = localStorage.getItem('imageGalleryData');
+        if (saved) {
+            data = JSON.parse(saved);
+            data.img_paths.forEach(img => img.lastModified = new Date(img.lastModified));
+            filteredImages = [...data.img_paths];
+            renderAutoFolders();
+            renderFolders();
+            updateImageCount();
+            sortImages(currentSort);
+        } else {
+            showEmptyState();
+        }
+
+        // Load night mode preference
+        const nightPref = localStorage.getItem('nightMode') === 'true';
+        applyNightMode(nightPref);
+    };
+
+    // Save current data to localStorage
+    function saveData() {
+        localStorage.setItem('imageGalleryData', JSON.stringify(data));
+    }
+
+    // Apply or remove night mode class and update toggle button text
+    function applyNightMode(isNight) {
+      if (isNight) {
+        document.body.classList.add('night-mode');
+        toggleNightMode.textContent = '☀️ Light Mode';
+      } else {
+        document.body.classList.remove('night-mode');
+        toggleNightMode.textContent = '🌙 Night Mode';
+      }
+      localStorage.setItem('nightMode', isNight ? 'true' : 'false');
+    }
+
+    // Night mode toggle button click handler
+    toggleNightMode.addEventListener('click', () => {
+      const isNight = document.body.classList.contains('night-mode');
+      applyNightMode(!isNight);
+    });
+
+    // === Auto-folder helper functions ===
+
+    // Extract cleaned auto-folder name from filename
+    function extractAutoFolderName(filename) {
+        let name = filename.replace(/^\d{6}-/, '');               // Remove date prefix
+        name = name.replace(/-\d+(?=\.\w+$)/, '');               // Remove trailing dash + digits before extension
+        name = name.replace(/\.\w+$/, '');                        // Remove the file extension at the end
+        name = name.replace(/-/g, " ");
+        return name;
+    }
+
+    // Group images by auto-folder name
+    function getAutoFoldersFromImages(images) {
+        const groups = {};
+        images.forEach(img => {
+            const folderName = extractAutoFolderName(img.name);
+            if (!groups[folderName]) groups[folderName] = [];
+            groups[folderName].push(img);
+        });
+        return groups;
+    }
+
+    // Render auto-folders section above manual folders
+    function renderAutoFolders() {
+        if (data.img_paths.length === 0) {
+            autoFoldersSection.innerHTML = '<p>No images to create auto-folders</p>';
+            return;
+        }
+        autoFoldersSection.innerHTML = '';
+        const groups = getAutoFoldersFromImages(data.img_paths);
+
+        Object.entries(groups).forEach(([folderName, imgs]) => {
+            const previewSrc = imgs[0].name || '';
+
+            const folderDiv = document.createElement('div');
+            folderDiv.className = 'folder-item';
+            folderDiv.style.cursor = 'pointer';
+
+            folderDiv.innerHTML = `
+                <img src="${previewSrc}" alt="${folderName}" class="folder-image" />
+                <div class="folder-name">${folderName}</div>
+                ${previewSrc ? '' : '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);color:#666;font-weight:600;">No Image</div>'}
+            `;
+
+            folderDiv.onclick = () => {
+                filteredImages = imgs;
+                currentFolderId = null; // deselect manual folders
+                sortImages(currentSort);
+            };
+
+            autoFoldersSection.appendChild(folderDiv);
+        });
+    }
+
+    // Handle new image files selected from main input
+    imageInput.addEventListener('change', handleImageSelection);
+    function handleImageSelection(event) {
+        const files = Array.from(event.target.files);
+        if (files.length === 0) {
+            showEmptyState();
+            return;
+        }
+        gallery.innerHTML = '<div class="loading">Loading images...</div>';
+        controls.style.display = 'flex';
+
+        Promise.all(files.map(processImage)).then(processedImages => {
+            let newImages = processedImages.filter(img => img !== null);
+
+            newImages.forEach(img => {
+                img.id = data.img_paths.length > 0 ? data.img_paths[data.img_paths.length - 1].id + 1 : 0;
+                img.is_fav = false;
+                data.img_paths.push(img);
+            });
+
+            // If a manual folder is selected, add new images to that folder
+            if (currentFolderId !== null) {
+                const folder = data.folders[currentFolderId];
+                if (folder) {
+                    newImages.forEach(img => folder.img_ids.push(img.id));
+                }
+            }
+
+            saveData();
+
+            // Update filtered images by folder or all
+            if (currentFolderId !== null) {
+                filteredImages = data.img_paths.filter(img => data.folders[currentFolderId].img_ids.includes(img.id));
+            } else {
+                filteredImages = [...data.img_paths];
+            }
+
+            renderAutoFolders();
+            renderFolders();
+            updateImageCount();
+            sortImages(currentSort);
+
+            imageInput.value = '';
+        });
+    }
+
+    // Handle image files selected from folder import input
+    folderImportInput.addEventListener('change', async (event) => {
+        const files = Array.from(event.target.files);
+        if (files.length === 0 || currentImportFolderIndex === null) {
+            folderImportInput.value = '';
+            return;
+        }
+
+        gallery.innerHTML = '<div class="loading">Loading images...</div>';
+        controls.style.display = 'flex';
+
+        const processedImages = await Promise.all(files.map(processImage));
+        const newImages = processedImages.filter(img => img !== null);
+
+        newImages.forEach(img => {
+            img.id = data.img_paths.length > 0 ? data.img_paths[data.img_paths.length - 1].id + 1 : 0;
+            img.is_fav = false;
+            data.img_paths.push(img);
+        });
+
+        // Add new image ids to selected manual folder's img_ids
+        const folder = data.folders[currentImportFolderIndex];
+        if (folder) {
+            newImages.forEach(img => folder.img_ids.push(img.id));
+        }
+
+        saveData();
+
+        filteredImages = data.img_paths.filter(img => folder.img_ids.includes(img.id));
+        currentFolderId = currentImportFolderIndex;
+
+        renderAutoFolders();
+        renderFolders();
+        updateImageCount();
+        sortImages(currentSort);
+
+        folderImportInput.value = '';
+        currentImportFolderIndex = null;
+    });
+
+    // Convert File object to image object with metadata
+    function processImage(file) {
+        if (!file.type.startsWith('image/')) return null;
+
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => {
+                    resolve({
+                        id: null,
+                        is_fav: false,
+                        name: file.name,
+                        size: file.size,
+                        lastModified: new Date(file.lastModified),
+                        width: img.width,
+                        height: img.height
+                    });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Sort images and re-render gallery
+    function sortImages(type, evt) {
+        currentSort = type;
+        if (evt && evt.target) {
+            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+            evt.target.classList.add('active');
+        }
+
+        let imgs = [];
+        if (type === 'favorite') {
+            imgs = data.img_paths.filter(img => img.is_fav);
+        } else if (currentFolderId !== null) {
+            const folder = data.folders[currentFolderId];
+            imgs = data.img_paths.filter(img => folder.img_ids.includes(img.id));
+        } else {
+            imgs = [...filteredImages];
+        }
+
+        switch (type) {
+            case 'all':
+                imgs = imgs = data.img_paths;
+                imgs.sort((a, b) => b.lastModified - a.lastModified);
+                break;
+            case 'newest':
+                imgs.sort((a, b) => b.lastModified - a.lastModified);
+                break;
+            case 'oldest':
+                imgs.sort((a, b) => a.lastModified - b.lastModified);
+                break;
+            case 'name':
+                imgs.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case 'favorite':
+                // Already filtered
+                break;
+        }
+
+        filteredImages = imgs;
+        renderGallery();
+        updateImageCount();
+    }
+
+    // Render images in gallery container
+    function renderGallery() {
+        if (filteredImages.length === 0) {
+            showEmptyState();
+            return;
+        }
+        gallery.innerHTML = '';
+        filteredImages.forEach((image, index) => {
+            const imageItem = document.createElement('div');
+            imageItem.className = 'image-item';
+            imageItem.onclick = () => openModal(index);
+            name = extractAutoFolderName(image.name)
+            imageItem.innerHTML = `
+                <img src="${image.name}" alt="${image.name}" loading="lazy" />
+                <div class="image-info">
+                    <div class="image-name">${truncateText(name, 25)}</div>
+                    <div class="image-date">${formatDate(image.lastModified)}</div>
+                </div>
+            `;
+            gallery.appendChild(imageItem);
+        });
+    }
+
+    // Show empty state message
+    function showEmptyState() {
+        gallery.innerHTML = `
+            <div class="empty-state">
+                <h3>No images selected</h3>
+                <p>Please select images from your IMG folder to start browsing</p>
+            </div>
+        `;
+        controls.style.display = 'flex';
+    }
+
+    // Open modal at image index
+    function openModal(index) {
+        currentImageIndex = index;
+        const image = filteredImages[index];
+
+        modalImage.src = image.name;
+        document.getElementById('modalImageName').textContent = extractAutoFolderName(image.name);
+        document.getElementById('modalImageDate').textContent = formatDate(image.lastModified);
+        document.getElementById('modalImageIndex').textContent = `${index + 1} of ${filteredImages.length}`;
+
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        let favBtn = document.querySelector('.modal-fav-btn');
+        if (!favBtn) {
+            favBtn = document.createElement('button');
+            favBtn.className = 'modal-fav-btn';
+            favBtn.innerHTML = '★';
+            favBtn.title = 'Toggle Favorite';
+            favBtn.onclick = toggleFavorite;
+            document.querySelector('.modal-content').appendChild(favBtn);
+        }
+        updateFavBtn(favBtn, image.is_fav);
+    }
+
+    // Update favorite button style
+    function updateFavBtn(btn, isFav) {
+        if (isFav) btn.classList.add('favorited');
+        else btn.classList.remove('favorited');
+    }
+
+    // Toggle favorite status of current modal image
+    function toggleFavorite(e) {
+        e.stopPropagation();
+        let image = filteredImages[currentImageIndex];
+        image.is_fav = !image.is_fav;
+
+        const dataImg = data.img_paths.find(i => i.id === image.id);
+        if (dataImg) dataImg.is_fav = image.is_fav;
+
+        saveData();
+        updateFavBtn(e.target, image.is_fav);
+
+        if (currentSort === 'favorite' && !image.is_fav) {
+            filteredImages.splice(currentImageIndex, 1);
+            if (filteredImages.length === 0) {
+                closeModal();
+                showEmptyState();
+                return;
+            }
+            currentImageIndex = Math.min(currentImageIndex, filteredImages.length - 1);
+            openModal(currentImageIndex);
+        }
+        renderGallery();
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+
+    function navigateImage(direction) {
+        currentImageIndex += direction;
+        if (currentImageIndex >= filteredImages.length) currentImageIndex = 0;
+        if (currentImageIndex < 0) currentImageIndex = filteredImages.length - 1;
+        openModal(currentImageIndex);
+    }
+
+    function updateImageCount() {
+        const count = filteredImages.length;
+        imageCount.textContent = `${count} image${count !== 1 ? 's' : ''}`;
+    }
+
+    function formatDate(date) {
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function truncateText(text, maxLength) {
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength - 3) + '...';
+    }
+
+    document.addEventListener('keydown', e => {
+        if (modal.classList.contains('active')) {
+            switch (e.key) {
+                case 'Escape':
+                    closeModal();
+                    break;
+                case 'ArrowLeft':
+                    navigateImage(-1);
+                    break;
+                case 'ArrowRight':
+                    navigateImage(1);
+                    break;
+            }
+        }
+    });
+
+    modal.addEventListener('click', e => {
+        if (e.target === modal) closeModal();
+    });
+
+    addFolderBtn.onclick = () => {
+        const folderName = prompt('Enter Folder Name:');
+        if (folderName && folderName.trim() !== '') {
+            data.folders.push({
+                name: folderName.trim(),
+                img_ids: []
+            });
+            saveData();
+            renderAutoFolders();
+            renderFolders();
+        }
+    };
+
+    // Render manual folders with Import and Edit buttons
+    function renderFolders() {
+        if (data.folders.length === 0) {
+            foldersSection.innerHTML = '<p>No folders created yet</p>';
+            return;
+        }
+        foldersSection.innerHTML = '';
+        data.folders.forEach((folder, index) => {
+            const folderDiv = document.createElement('div');
+            folderDiv.className = 'folder-item';
+
+            let previewImgSrc = '';
+            if (folder.img_ids.length > 0) {
+                const imgObj = data.img_paths.find(img => folder.img_ids.includes(img.id));
+                if (imgObj) previewImgSrc = imgObj.name;
+            }
+
+            folderDiv.innerHTML = `
+                <img src="${previewImgSrc || ''}" alt="${folder.name}" class="folder-image" />
+                <div class="folder-name">${folder.name}</div>
+                <button class="folder-import-btn" title="Import Images to Folder">Import</button>
+                <button class="folder-edit-btn" title="Edit Folder Name">Edit</button>
+                ${previewImgSrc ? '' : '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);color:#666;font-weight:600;">No Image</div>'}
+            `;
+
+            const importBtn = folderDiv.querySelector('.folder-import-btn');
+            importBtn.onclick = e => {
+                e.stopPropagation();
+                currentImportFolderIndex = index;
+                folderImportInput.click();
+            };
+
+            const editBtn = folderDiv.querySelector('.folder-edit-btn');
+            editBtn.onclick = e => {
+                e.stopPropagation();
+                const newName = prompt('Enter new folder name:', folder.name);
+                if (newName && newName.trim() !== '') {
+                    data.folders[index].name = newName.trim();
+                    saveData();
+                    renderAutoFolders();
+                    renderFolders();
+                }
+            };
+
+            folderDiv.onclick = () => {
+                currentFolderId = index;
+                filteredImages = data.img_paths.filter(img => data.folders[currentFolderId].img_ids.includes(img.id));
+                sortImages(currentSort);
+            };
+
+            foldersSection.appendChild(folderDiv);
+        });
+    }
+</script>
+</body>
+</html>
